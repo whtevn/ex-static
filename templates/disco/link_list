@@ -1,0 +1,6 @@
+ul{
+<% Generator.listing.each { |entry| %>
+  <% contents = Generator.load_entry entry %>
+  li { link_to :<%=@page.file_name%>, <%= contents['title'].inspect || entry.inspect %>, :page => <%= entry.inspect %> }
+<% } %>
+}

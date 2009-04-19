@@ -1,0 +1,6 @@
+# describe the base display for <%=name%> here.
+div(:class => '<%=name%>'){
+<% if attrs %>
+<% attrs.each { |a, v| %>  put :<%= a %> <% } %>
+<%end%>
+}

@@ -1,0 +1,8 @@
+
+ h3{plain_put :content_head}
+
+<% if has_subs? %>
+div(:id => 'submenu'){ partial :<%=menu_title.as_file%>, :submenu }
+<% end %>
+<%= 'breadcrumbs' if breadcrumbs.size > 1 %>
+put :contents

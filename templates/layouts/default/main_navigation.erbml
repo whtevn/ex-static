@@ -1,0 +1,10 @@
+
+
+
+ul(:id => "main_navigation") {
+  <% main_links.each do |link_value| %>
+  li(:class => "main_link"){
+    main_link_for :<%=link_value.as_file%>
+  } <% end %>
+}
+

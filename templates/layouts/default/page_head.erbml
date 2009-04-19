@@ -1,0 +1,7 @@
+
+# page head for <%= @site_name %>
+
+h1 '<%=name%>'
+get :base, :main_navigation
+
+

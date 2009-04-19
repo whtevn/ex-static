@@ -1,0 +1,321 @@
+cli :name=>"static", :prompt=>"-> " do
+  set :help do
+    helpdocs
+  end
+
+  set :unknown_command do |method, args|
+    puts "command not found: #{method} \nwith args: #{args.join(' ')}"
+  end
+  
+  set :feed do |args|
+    flag(:new => 'n'){@new = true}
+    process(args)
+    feeds = []
+    name = (remaining_argument == '' ? '.' : remaining_argument)
+    feeds << unless @new
+      name = choice('please choose a collection:', items_under($active_site.home+'collections')[:folders], name) 
+      name
+    else
+      name
+    end
+    $active_site.info['feeds'] ||= []
+    $active_site.info['feeds'] << feeds
+    $active_site.info['feeds'].flatten!.uniq!
+    $active_site.save_info 'site.info'
+    puts "add this to base/default.rbml to host:\n\t`feed :#{name}`"
+  end
+
+  set :start do |args|
+    key(:editor){ @active = :editor }
+    key(:site){ @active = :site }
+    key(:collection){ @active = :collection }
+    key(:with)
+    flag(:help => 'h'){ puts "helpdocs for 'start' go here" }
+
+    process(args)
+    name = (remaining_argument == '' ? request_value('please enter a name: ') : remaining_argument) unless @active == :editor
+    @active = ($active_site ? :collection : :site) unless @active
+
+    case @active
+    when :site
+      $active_site = start_site(name)
+      if $active_site
+        puts "starting a site map for #{$active_site.name}"
+      else
+        puts "looks like there is already a site called #{name}"
+      end
+    when :collection
+      if $active_site
+        name = remaining_arguments.shift
+        $active_collection = start_collection(name, remaining_arguments)
+        if $active_collection 
+          puts "#{name} collection is active"
+        else
+          puts "looks like there is already a collection called #{name}"
+        end
+      else
+        puts 'gotta have a site to make a collection'
+      end
+    when :editor 
+      $active_site.info['user_name']           ||=  request_value 'username on your server: ' 
+      $active_site.info['server']              ||=  {}
+      $active_site.info['local']              ||=  {}
+      $active_site.info['server']['address']   ||=  request_value 'server address (that you would use to ssh): ' 
+      $active_site.info['server']['directory'] ||=  request_value 'directory on server (e.g. ~/www): ' 
+      $active_site.info['server']['link']      ||=  request_value('web address of site home (e.g. somesite.com): ' ).as_http
+      $active_site.info['local']['link']       ||=  request_value('local address of site home (e.g. localhost/~username/): ' ).as_http+"static/#{$active_site.info['working_name']}"
+      
+      $active_site.info['server']['link'] = $active_site.info['server']['link'].as_http
+    $active_site.save_info 'site.info'
+      system "camping #{$active_site.home}helpers/content.rb"
+    end
+  end
+  
+  set :assign do |args|
+    flag(:page => 'p'){ |name|
+      @page = choice('please choose a page:', @possible_pages, name.downcase)
+    }
+    flag(:collection => 'c'){ |name|
+      @collection = load_collection(choice('please choose a collection:', items_under($active_site.home+'collections')[:folders], name.downcase))
+    }
+    key(:paginate){@paginate = true}
+
+    if $active_site 
+      ready = exists? :folder, $active_site.home+'blueprint'
+      if ready
+        @possible_pages = []
+        $active_site.pages.each{ |page| @possible_pages << page unless $active_site.info['paginate'] && $active_site.info['paginate'].keys.include?(page.file_name) }
+        process(args)
+          
+        @collection ||= load_collection(choice('please choose a collection:', items_under($active_site.home+'collections')[:folders]))
+        puts "\n  - - - \n" unless @page
+        @page       ||= choice('please choose a page:', @possible_pages)
+        assign_pagination @collection.file_name, @page.file_name
+        paginate @page.file_name if @paginate
+      else
+        puts 'please build a blueprint paginating collections'
+      end
+    else
+      ready ? message : 'please choose a site'
+    end
+  end
+
+  set :paginate do |name|
+    @page = choice('which page did you mean?', $active_site.info['paginate'].keys, name) if name
+    if exists? :folder, $active_site.home+'blueprint'
+      if @page
+        paginate @page 
+      else
+        if $active_site.info['paginate']
+          $active_site.info['paginate'].each { |page, collection| paginate page } 
+        else
+          puts 'please use `assign` to assign a collection to a page before paginating'
+        end
+      end
+    else
+      puts 'please generate your blueprint before paginating'
+    end
+  end
+
+  set :layout do |args|
+    key(:choose) { @active = :choose }
+    key(:save) { @active = :choose }
+    flag(:force => 'f'){ @force = true }
+    process args
+    name = (remaining_argument == '' ? '.' : remaining_argument)
+    @active = :choose unless @active
+    case @active
+    when :choose
+      if $active_site
+        if set_layout choice('please choose a layout:', items_under($ENV['LAYOUT_HOME'])[:folders], name), @force
+          puts "#{$active_site.info['layout']['name']} is now being used" else puts 'no new layout was chosen'
+        end
+      else
+        puts 'there is no active site right now.'
+      end
+    end
+  end
+
+  set :edit do |args|
+    key(:site)
+    key(:attributes){
+      @collection = $active_collection.name unless @collection
+      @edit << :attributes
+    }
+    key(:display){
+      @collection = $active_collection.name unless @collection
+      @edit << :display
+    }
+    key(:all){
+      @collection = $active_collection.name unless @collection
+      @edit = [:attributes, :display]
+    }
+    flag(:entry){
+      @edit = :entry
+    }
+    flag(:collection => 'c'){ |name| @collection = name }
+    
+    
+    @edit = []
+    process args
+    file = remaining_argument
+    file = 'contents' if  file == 'copy'
+
+    if $active_site
+      case
+      when @edit == :entry
+        @collection ||= $active_collection
+        file ||= :last
+        puts 'getting ready to edit an entry'
+      when @collection
+        @edit.each { |item|
+          puts "opening #{@collection}'s attributes"
+          edit("#{$active_site.home}collections/#{@collection}/#{item.to_s}")
+        }
+      when exists?(:file, "#{$active_site.home}project_info/#{file}") then
+        puts "opening #{$active_site.name}'s #{file}"
+        edit("#{$active_site.home}project_info/#{file}") 
+        $active_site.load_info(file)
+        $active_site.load_pages if file == 'site.map'
+      when exists?(:any, $active_site.home+file) : edit($active_site.home+file)
+      else
+        puts "no file found: #{$active_site.home}"
+      end
+    else
+      puts 'no active site'
+    end
+  end
+  
+  set :load do |args|
+    key(:site){ @active = :site }
+    key(:collection){ @active = :collection }
+
+    flag(:help => 'h'){ puts "helpdocs for 'load' go here" }
+
+    process(args)
+    name = (remaining_argument == '' ? '.' : remaining_argument)
+    @active = $active_site ? :collection : :site unless @active
+
+    case @active
+    when :site then
+      $active_site = load_site(name)
+      if $active_site 
+        puts "#{$active_site.name} site is active" 
+      else
+        $active_site = load_site(choice('available sites', items_under($ENV['SITE_BANK'])[:folders], name))
+        puts 'sorry bub, nuthin there.' unless $active_site
+      end
+    when :collection then
+      $active_collection = nil
+      if $active_site
+        $active_collection = load_collection(name)
+        if $active_collection
+          puts("#{$active_collection.name} collection is active")
+        else
+          $active_collection = load_collection(choice('available collections', items_under($active_site.home+'collections')[:folders], name))
+          unless $active_collection
+            puts 'can\'t find a collection like that, baby' 
+          else
+            puts("#{$active_collection.name} collection is active")
+          end
+        end
+      else
+        puts 'there must be an active site before starting a collection'
+      end
+    end
+  end
+
+  set :generate do
+    ready = exists? :folder, $active_site.home+'layout'
+    message = 'please choose a layout before generating html' unless ready
+    if ready
+      ready = exists? :folder, $active_site.home+'blueprint'
+      message = 'please build a blueprint before generating html' unless ready
+      if ready
+        ready = exists? :folder, $active_site.home+'contents'
+        message = 'please build the site content before generating html' unless ready
+      end
+    end
+    if $active_site
+      if ready 
+         destroy $active_site.site_loc
+         $active_site.generate 
+      else
+         puts(message)
+      end
+    else
+      puts 'need a site before you can generate one'
+    end
+  end
+
+  set :add do |args|
+    edit $active_collection.add_entry[:file]
+    $active_collection.sanitize_listing
+    $active_collection.save_listing
+  end
+
+  set :build do |args|
+    key(:copy){ @active = :contents }
+    key(:contents){ @active = :contents }
+    key(:blueprint){ @active = :blueprint }
+    key(:all){ @active = :all }
+    flag(:force => 'f'){ @force = true }
+    process args
+    @active = :contents unless @active
+    set_layout(choice('please choose a layout:', items_under($ENV['LAYOUT_HOME'])[:folders]), false) unless $active_site.info['layout'] 
+    case @active
+    when :contents then
+      destroy $active_site.home+'contents' if @force
+      $active_site.build(:contents) 
+    when :blueprint then
+      destroy $active_site.home+'blueprint' if @force
+      $active_site.build(:blueprint) 
+    when :all then
+      destroy $active_site.home+'blueprint' if @force and not make_sure('do you want to destroy the blueprints?', 'N', 'y')
+      destroy $active_site.home+'contents' if @force and not make_sure('do you want to destroy the contents?', 'N', 'y')
+      $active_site.build(:contents)
+      $active_site.build(:blueprint) 
+    end
+  end
+  
+  set :clear do
+    system 'clear'
+  end
+
+  set :publish do |args|
+    flag(:user => 'u'){ |value|
+      $active_site.info['user_name'] = value || request_value( 'username: ' )
+    }
+    flag(:address => 'a'){ |value|
+      $active_site.info['server'] ||=  {}
+      $active_site.info['server']['address']  =  value || request_value('server address: ' )
+    }
+    flag(:dir => 'd'){ |value|
+      $active_site.info['server'] ||=  {}
+      $active_site.info['server']['location'] =  value || request_value( 'site location on server: ' )
+    }
+    flag(:link => 'l'){ |value|
+      $active_site.info['server'] ||=  {}
+      $active_site.info['server']['link'] =  value || request_value( 'web address of site home: ' )
+    }
+    flag(:blank => 'b'){ @blank =  true }
+    process args
+    $active_site.info['user_name']           ||=  request_value 'username: ' 
+    $active_site.info['server']              ||=  {}
+    $active_site.info['server']['address']   ||=  request_value 'server address: ' 
+    $active_site.info['server']['directory'] ||=  request_value 'directory on server: ' 
+    $active_site.info['server']['link']      ||=  request_value('web address of site home: ' ).as_http
+    $active_site.info['server']['link'] = $active_site.info['server']['link'].as_http
+
+    $active_site.save_info 'site.info'
+    publish_feeds @blank
+   end
+
+
+  set :quit do
+    exit
+  end
+  set :exit do
+    exit
+  end
+end

@@ -1,0 +1,13 @@
+
+
+<% say='' %>
+ul(:id => "<%=name%>"){
+  li(:class => "sidebar_title"){
+    i "<%=name%>"
+  }
+  <% subs.each do |link_value| %>
+  li(:class => "sidebar_link"){<%(link_value.kind_of?(Hash) ? link_value.each {|k,v| say=k} : (say=link_value))%>
+    link_to :<%=say.as_file%>
+  } <% end %>
+}
+

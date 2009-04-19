@@ -1,0 +1,57 @@
+constants:
+  SITE_HOME='~/Sites/static'
+  BLUEPRINT_HOME='~/static'
+  TEMPLATE_HOME='~/static/templates'
+  
+commands:
+	start [(key)_name] [site | collection]
+		start defaults to the site key if there is no active_site
+		otherwise it defaults to a new collection
+
+	edit [page_name | entry_title ] [ contents | [site_map | properties]
+    page_name is unnecessary if there is an active page
+    full page name is unnecessary. does a simple regex for pages
+    and is case insensitive.
+    if more than one page is available a yaml representation of the
+    possibilities will be displayed to choose from. 
+
+  add [name | title] [ page | entry ] [under page_name], (--edit, -e [content/display | false])
+    adds a new page or entry of the title specified.
+    if adding a page, you may use the under option to add
+    the page under a specific page. page_name search is dealt with as elsewhere.
+    edit is true by default under entries, but false for pages. 
+    if using pages, you must indicate to the edit option whether you want to 
+    mess with the display or copy of the page
+  
+	use [(key)_name] [ collection | page ]
+    sets an active page or collection
+    if no name is given a list of the chosen key is given.
+    e.g. pages = [home, info] 
+         -> view pages
+            - home
+            - info
+            please choose a page: 
+    type a page name (as in edit) to use
+
+  show [(key)_name] [ recent | unpublished | all ] [ pages | contents ] [(--reset, -r)]
+    defaults to collection [contents] if there is an active one
+    otherwise defaults to the page 
+    if there is an active page it will be used if no page_name is provided
+    if there is an active page but there is a page_name provided
+    the active page will not be reset unless the reset flag is tripped
+
+	build [(key)_name] [site | page | collection]
+	generate
+  publish
+  status [site | collection]
+		this one seems complicated. and those keys arent right.
+		options aren't 
+
+sample topsite dialogue
+
+-> start newqdev site
+
+(edit sitemap file)
+()
+"managing newqdev"
+

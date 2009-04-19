@@ -1,0 +1,4 @@
+title: <%=name%>
+content_head: <%=name%>
+contents: |
+  here are some *contents* for the time being!  <[link_to :<%=name.as_file%>]>

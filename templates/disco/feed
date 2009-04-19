@@ -1,0 +1,21 @@
+rss{
+  title <%=name.inspect%>
+  link $active_site.info['server']['link']
+# description ''                                                                                             
+  language 'en-us'
+  pubDate Time.now.to_s
+  lastBuildDate Generator.last_built
+  docs 'http://blogs.law.harvard.edu/tech/rss'
+  generator 'static+rbml'
+#  managingEditor ''
+#  webMaster ''
+  display(5, :<%=name.as_file%>){
+    item {
+      title Generator.contents['title']
+      link Generator.contents['link'] if Generator.contents['link']
+      description { process_cdata(Generator.contents['entry']) }
+      pubDate Generator.contents[:publish]
+      guid { address_for(:<%=name.as_file%>, :page => Generator.contents[:id]) }
+    }
+  }
+}

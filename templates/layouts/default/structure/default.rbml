@@ -1,0 +1,22 @@
+xhtml :doctype => {:type=>:xhtml, :version=>"1.0", :strict=>false} do
+	head do
+    put_title
+    use_stylesheet :default
+	  put_stylesheets
+	  charset 'utf-8'
+	end
+
+	body(:id => 'visible_page') do
+    div(:id => 'container') do
+      div(:id => 'header'){
+        get :base, :page_head
+      }
+      div(:id => 'content'){
+        get :page, :contents
+      }
+      div(:id => 'footer'){
+        get :base, :footer
+      }
+    end
+	end
+end

@@ -1,0 +1,6 @@
+div(:class => 'copyright'){
+  i 'static+rbml'
+}
+div(:class => 'copyright'){
+  i 'easy made easy'
+}

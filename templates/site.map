@@ -1,0 +1,15 @@
+site_map:
+  - Static:
+    - The Copy:
+      - Showing Depth
+      - Multiple Levels:
+        - one
+        - two:
+          - three
+          - four
+    - The Blueprint
+    - The Site
+  - About:
+    - Usage
+    - rbml
+  - Contact  

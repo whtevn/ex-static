@@ -1,0 +1,96 @@
+#!/usr/bin/env ruby
+
+require File.dirname(__FILE__)+'/../lib/static'
+
+
+include Static
+Static::setup_home
+include FileBase
+
+#destroy $ENV['STATIC_HOME']
+#destroy $ENV['STATIC_VIEWING']
+
+mkdir $ENV['STATIC_HOME'] unless exists? :folder, $ENV['STATIC_HOME']
+mkdir $ENV['SITE_BANK'] unless exists? :folder, $ENV['SITE_BANK']
+
+copy File.dirname(__FILE__)+'/../templates',  $ENV['TEMPLATE_HOME'] unless exists? :folder, $ENV['TEMPLATE_HOME']
+copy File.dirname(__FILE__)+'/../templates/helpers',  $ENV['TEMPLATE_HOME']+'helpers' unless exists? :folder, $ENV['TEMPLATE_HOME']+'helpers'
+move $ENV['TEMPLATE_HOME']+'layouts', $ENV['LAYOUT_HOME'] unless exists? :folder, $ENV['LAYOUT_HOME']
+puts "home: #{$ENV['STATIC_HOME']}"
+
+$LOAD_PATH.unshift(File.expand_path(File.dirname(__FILE__))+'/lib/rbml')
+$LOAD_PATH.unshift($ENV['STATIC_HOME'])
+
+module Rbml
+  module Language
+    module Cli
+      module Cli
+        include Static
+
+        def helpdocs
+          puts 'these are the ellhp.'
+        end
+        def edit file
+          system "#{$ENV['EDITOR']} #{file}"
+        end
+      end
+    end
+  end
+end
+
+::Rbml::Processor.run(File.dirname(__FILE__)+'/cli.rbml')
+
+__END__
+$active_site = load_site('static')
+destroy $active_site.site_loc
+$active_site.generate
+set_layout($active_site.info['layout'], false)
+$active_site.build :contents
+$active_site.build :blueprint
+$active_site.info['layout']='default'
+$active_site.info['username'] = 'e'
+$active_site.info['server'] = {}
+$active_site.info['server']['link'] = 'http://newqdev.com'
+$active_site.info['server']['address'] = 'newqdev.com'
+$active_site.info['server']['directory'] = '~/newqdev.com'
+$active_collection = $active_site.start_collection 'news', ['date', 'headline', 'entry']
+$active_site.generate
+destroy $active_site.site_loc
+$active_site.generate
+#system "vi #{$active_collection.home}attributes"
+5.times do
+  puts $active_collection.add_entry
+  $active_collection.save_listing
+  gets
+end
+$active_site.info['feeds'] = ['news']
+$active_site.save_info 'site.info'
+publish_feeds true
+
+__END__
+#system "#{$ENV['EDITOR']} #{$active_site.home}"
+paginate :the_copy
+destroy $active_site.site_loc
+$active_site.generate
+
+$active_site = start_site('static')
+$active_site.load_info
+$active_site.load_pages
+$active_site.start_collection 'blog', ['date', 'title', 'entry']
+
+$active_site.build(:contents)
+$active_site.info['layout'] = 'default'
+set_layout($active_site.info['layout'], false)
+$active_site.build(:blueprint)
+
+assign_pagination :blog, :the_blueprint
+#$active_collection = load_collection 'faq'
+::Rbml::Processor.run(File.dirname(__FILE__)+'/cli.rbml')
+#system "vi #{$active_collection.add_entry}"
+#$active_collection.save_listing
+#$active_site.build :contents
+#$active_site.set_layout('default', $ENV['LAYOUT_HOME'])
+#$active_site.build :blueprint
+#$active_site.start_collection 'faq', ['question', 'answer']
+destroy $active_site.site_loc
+$active_site.generate
